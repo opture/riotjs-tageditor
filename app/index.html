@@ -63,55 +63,40 @@
               <div id="toolbar">
                 <button onclick="{ renderTag }" type="button">Render</button>
                 <button onclick="{ exportTag }" type="button">Save</button>
-                <select onchange="{selectTag}"><option each={tagname in tagNames}>{tagname}</option></select>
+                <select onchange="{selectTag}" name="tagSelector"><option each={tagname in tagNames}>{tagname}</option></select>
+                <button onclick="{ toggleTagEditor }" type="button">{ showTagEditor ? 'Hide tageditor' : 'Show tageditor'}</button>
+                <button onclick="{ toggleStyleEditor }" type="button">{ showStyleEditor ? 'Hide styles' : 'Show styles'}</button>
+                <button onclick="{ toggleJsonEditor }" type="button">{ showJsonEditor ? 'Hide tag options' : 'Show tag options'}</button>
+                <button onclick="{ clearAll }" type="button">Clear all</button>
               </div>
               <div id="editors">
-                <div id="tagDefContainer" class="editorContainers"> </div>
-                <div id="tagStyleContainer" class="editorContainers">
-                </div>
-                <div id="tagOptsContainer" class="editorContainers">
-                </div>
+                <div id="tagDefContainer" class="editorContainers" show={showTagEditor}> </div>
+                <div id="tagStyleContainer" class="editorContainers" show={showStyleEditor}></div>
+                <div id="tagOptsContainer" class="editorContainers" show={showJsonEditor}></div>
               </div>
 
             </div>
             var self = this;
-
+            self.showTagEditor = true;
+            self.showStyleEditor = true;
+            self.showJsonEditor = true;
 
             this.getTagNames = function(){
               $.get('https://riottagworkbench.firebaseio.com/tags.json', function(data){
                 console.log(data);
               });
             }
-            this.on('newTags', function(){
-              //setTimeout(function(){
-                self.tagnames = window.tagNames;
-                self.tagCollection = window.tagsCollection;
-                self.update();
-              //},1500)
-            });
-            this.on('mount', function(){
-              self.tagEditor = ace.edit("tagDefContainer");
-              self.tagEditor.setTheme("ace/theme/monokai");
-              self.tagEditor.getSession().setMode("ace/mode/html");
-              self.tagEditor.setValue(opts.tagDef);
-              self.tagEditor.setOption("showPrintMargin", false);
+            self.clearAll = function(){
+              //Clear all the editors.
+              self.tagEditor.setValue('', -1);
+              self.jsonEditor.setValue('', -1);
+              self.styleEditor.setValue('', -1);
 
-              self.jsonEditor = ace.edit("tagOptsContainer");
-              self.jsonEditor.setTheme("ace/theme/monokai");
-              self.jsonEditor.getSession().setMode("ace/mode/json");
-              self.jsonEditor.setOption("showPrintMargin", false);
-              self.jsonEditor.setValue(opts.tagOpts);
+              //Set the selected tag to none.
+              self.tagSelector.selectedIndex = 0;
+            };
 
-              self.styleEditor = ace.edit("tagStyleContainer");
-              self.styleEditor.setTheme("ace/theme/monokai");
-              self.styleEditor.getSession().setMode("ace/mode/css");
-              self.styleEditor.setOption("showPrintMargin", false);
-              self.styleEditor.setValue(opts.tagStyle);
-
-              self.update();
-
-            });
-            renderTag(e){
+            self.renderTag = function(e){
               e.preventDefault();
 
               //Ref to tagdefintion element.
@@ -166,7 +151,7 @@
 
 
             }
-            exportTag(e){
+            self.storeTag = function(uid){
               var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
               if (confirm('Do you want to export tag: ' + tagName)){
                 var exportObject = {
@@ -176,46 +161,127 @@
                   tagStyle: self.styleEditor.getValue()
                 }
                 console.log(exportObject);
-                var tagRef = ref.child(tagName);
+
+                var tagRef = userRef.child(tagName);
                 tagRef.set(exportObject);
               }
-
             };
+
+            exportTag(e){
+              var authData = ref.getAuth();
+              if (authData){
+                //Store to the users id.
+
+                self.storeTag(authData.uid);
+              }else{
+                //Make the user login.
+                ref.authWithOAuthPopup("google", function(error, authData) {
+                  if (error) {
+                    console.log("Login Failed!", error);
+                  } else {
+                    console.log("Authenticated successfully with payload:", authData);
+                    userRef = new Firebase('https://riottagworkbench.firebaseio.com/tags/usersTags/' + authData.uid);
+                    self.storeTag(authData.uid);
+                  }
+                });
+              }
+            };
+
+
             selectTag(e){
               console.log(e.target.value);
               opts = self.tagCollection[e.target.value];
-              self.tagEditor.setValue(opts.tagDef);
-              self.jsonEditor.setValue(opts.tagOpts);
-              self.styleEditor.setValue(opts.tagStyle);
+              opts = opts || {};
+              //Editors dont get their values set if they are hidden.
+              //Needs improvement, but until then, just show all the editors so their values get set.
+              self.showTagEditor = true;
+              self.showStyleEditor = true;
+              self.showJsonEditor = true;
+
+              //Set the editors values from store.
+
+              self.tagEditor.setValue(opts.tagDef ? opts.tagDef : '', -1);
+              self.jsonEditor.setValue(opts.tagOpts ? opts.tagOpts : '', -1);
+              self.styleEditor.setValue(opts.tagStyle ? opts.tagStyle : '', -1);
+              self.renderTag(e);
             }
+            toggleTagEditor(e){
+              self.showTagEditor = !self.showTagEditor;
+            };
+            toggleStyleEditor(e){
+              self.showStyleEditor = !self.showStyleEditor;
+            };
+            toggleJsonEditor(e){
+              self.showJsonEditor = !self.showJsonEditor;
+            }
+
+            this.on('newTags', function(){
+              //setTimeout(function(){
+                self.tagnames = window.tagNames;
+                self.tagCollection = window.tagsCollection;
+                self.update();
+              //},1500)
+            });
+            this.on('mount', function(){
+              self.tagEditor = ace.edit("tagDefContainer");
+              self.tagEditor.setTheme("ace/theme/monokai");
+              self.tagEditor.getSession().setMode("ace/mode/html");
+              self.tagEditor.setValue(opts.tagDef);
+              self.tagEditor.setOption("showPrintMargin", false);
+
+              self.jsonEditor = ace.edit("tagOptsContainer");
+              self.jsonEditor.setTheme("ace/theme/monokai");
+              self.jsonEditor.getSession().setMode("ace/mode/json");
+              self.jsonEditor.setOption("showPrintMargin", false);
+              self.jsonEditor.setValue(opts.tagOpts);
+
+              self.styleEditor = ace.edit("tagStyleContainer");
+              self.styleEditor.setTheme("ace/theme/monokai");
+              self.styleEditor.getSession().setMode("ace/mode/css");
+              self.styleEditor.setOption("showPrintMargin", false);
+              self.styleEditor.setValue(opts.tagStyle);
+
+              self.update();
+
+            });
         </riot-tag-workbench>
     </script>
 
   <script>
+
     var ref = new Firebase('https://riottagworkbench.firebaseio.com/tags/');
-    window.tagNames = [];
-    var tagsCollection = {};
+    var userRef;
+    var authData = ref.getAuth();
+    if (authData){
+      window.tagNames = [];
+      var tagsCollection = {};
+      userRef = new Firebase('https://riottagworkbench.firebaseio.com/tags/usersTags/' + authData.uid);
 
-
-    ref.on("value", function(snapshot) {
-      tagsCollection = snapshot.val();
-      //Loop over the properties and get all tagnames.
-      tagNames= ['-None selected-'];
-      for (var property in tagsCollection) {
-        if (tagsCollection.hasOwnProperty(property)) {
-          console.log(property, tagsCollection[property]);
-          tagNames.push(property);
+      userRef.on("value", function(snapshot) {
+        tagsCollection = snapshot.val();
+        //Loop over the properties and get all tagnames.
+        tagNames= ['-None selected-'];
+        for (var property in tagsCollection) {
+          if (tagsCollection.hasOwnProperty(property)) {
+            console.log(property, tagsCollection[property]);
+            tagNames.push(property);
+          }
         }
-      }
-      document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
-    }, function (errorObject) {
-      console.log("The read failed: " + errorObject.code);
-    });
+        document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
+      }, function (errorObject) {
+        console.log("The read failed: " + errorObject.code);
+      });
+    }
+
+
+
   var predefined = {
     tagDef: '<riot-tag>\n <h3>New tag</h3>\n</riot-tag>',
     tagOpts: '{"message":"New Message"}',
     tagStyle: 'riot-tag{\n background-color:#fff;\n}'
   };
+
+
     riot.mount('riot-tag-workbench', predefined);
     </script>
 </body>
