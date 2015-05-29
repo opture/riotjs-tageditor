@@ -1,0 +1,224 @@
+<!doctype html>
+<html class="no-js">
+
+<head>
+    <meta charset="utf-8">
+    <title>riot TagWorkbench</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <!-- build:css(.) styles/vendor.css -->
+    <!-- bower:css -->
+    <!-- endbower -->
+    <!-- endbuild -->
+    <!-- build:css(.tmp) styles/main.css -->
+    <link rel="stylesheet" href="styles/main.css">
+    <!-- endbuild -->
+</head>
+
+<body>
+    <!--[if lt IE 10]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+    <riot-tag-workbench></riot-tag-workbench>
+
+    <!-- build:js(.) scripts/vendor.js -->
+    <!-- bower:js -->
+    <script src="bower_components/zepto/zepto.js"></script>
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+    <!-- endbower -->
+    <!-- endbuild -->
+    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+    <script>
+    (function(b, o, i, l, e, r) {
+        b.GoogleAnalyticsObject = l;
+        b[l] || (b[l] =
+            function() {
+                (b[l].q = b[l].q || []).push(arguments)
+            });
+        b[l].l = +new Date;
+        e = o.createElement(i);
+        r = o.getElementsByTagName(i)[0];
+        e.src = '//www.google-analytics.com/analytics.js';
+        r.parentNode.insertBefore(e, r)
+    }(window, document, 'script', 'ga'));
+    ga('create', 'UA-XXXXX-X');
+    ga('send', 'pageview');
+    </script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/riot/2.1.0/riot+compiler.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.9/ace.js'></script>
+    <script src="https://cdn.firebase.com/js/client/2.2.5/firebase.js"></script>
+
+    <!-- build:js({app,.tmp}) scripts/main.js -->
+    <script src="scripts/index.js"></script>
+    <!-- endbuild -->
+
+    <script type="riot/tag">
+        <riot-tag-workbench>
+            <div id="workbench">
+
+            </div>
+            <div id="container">
+              <div id="toolbar">
+                <button onclick="{ renderTag }" type="button">Render</button>
+                <button onclick="{ exportTag }" type="button">Save</button>
+                <select onchange="{selectTag}"><option each={tagname in tagNames}>{tagname}</option></select>
+              </div>
+              <div id="editors">
+                <div id="tagDefContainer" class="editorContainers"> </div>
+                <div id="tagStyleContainer" class="editorContainers">
+                </div>
+                <div id="tagOptsContainer" class="editorContainers">
+                </div>
+              </div>
+
+            </div>
+            var self = this;
+
+
+            this.getTagNames = function(){
+              $.get('https://riottagworkbench.firebaseio.com/tags.json', function(data){
+                console.log(data);
+              });
+            }
+            this.on('newTags', function(){
+              //setTimeout(function(){
+                self.tagnames = window.tagNames;
+                self.tagCollection = window.tagsCollection;
+                self.update();
+              //},1500)
+            });
+            this.on('mount', function(){
+              self.tagEditor = ace.edit("tagDefContainer");
+              self.tagEditor.setTheme("ace/theme/monokai");
+              self.tagEditor.getSession().setMode("ace/mode/html");
+              self.tagEditor.setValue(opts.tagDef);
+              self.tagEditor.setOption("showPrintMargin", false);
+
+              self.jsonEditor = ace.edit("tagOptsContainer");
+              self.jsonEditor.setTheme("ace/theme/monokai");
+              self.jsonEditor.getSession().setMode("ace/mode/json");
+              self.jsonEditor.setOption("showPrintMargin", false);
+              self.jsonEditor.setValue(opts.tagOpts);
+
+              self.styleEditor = ace.edit("tagStyleContainer");
+              self.styleEditor.setTheme("ace/theme/monokai");
+              self.styleEditor.getSession().setMode("ace/mode/css");
+              self.styleEditor.setOption("showPrintMargin", false);
+              self.styleEditor.setValue(opts.tagStyle);
+
+              self.update();
+
+            });
+            renderTag(e){
+              e.preventDefault();
+
+              //Ref to tagdefintion element.
+              var tagSource = this.tagDef;
+
+              //Ref to tagOptions element.
+              var tagOptions = this.tagOpts;
+
+              //Ref to tagStyle element.
+              var tagStyle = this.tagStyle;
+
+              //Object to hold the options for the tag.
+              var tagOptionsObject = {};
+              var setOptions = false;
+
+              //Parse the tagname.
+              var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
+
+              //Consider it to be an object and parse it to javascript.
+              var jsonValue  = self.jsonEditor.getValue();
+              if (jsonValue){
+                tagOptionsObject = JSON.parse(jsonValue);
+                setOptions = true;
+              }
+
+
+              console.log(self.jsonEditor.getValue());
+              console.log(tagOptionsObject);
+
+              //Compile the tag.
+              var newTag = riot.compile(self.tagEditor.getValue());
+
+              //Create element and append to view.
+              var newTagEl = document.createElement(tagName);
+              this.workbench.innerHTML = '';
+              this.workbench.appendChild(newTagEl);
+
+              //Inject style.
+              var styleTags = this.root.getElementsByTagName('style');
+              if (styleTags.length > 0) {
+                this.root.removeChild(styleTags[0]);
+              }
+
+              this.root.insertAdjacentHTML('afterbegin', '<style>' + self.styleEditor.getValue() + '</style>');
+
+              //Mount the tag.
+              if (setOptions){
+                riot.mount(tagName, tagOptionsObject);
+              }else{
+                riot.mount(tagName);
+              }
+
+
+            }
+            exportTag(e){
+              var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
+              if (confirm('Do you want to export tag: ' + tagName)){
+                var exportObject = {
+                  tagName: tagName,
+                  tagDef: self.tagEditor.getValue(),
+                  tagOpts: self.jsonEditor.getValue(),
+                  tagStyle: self.styleEditor.getValue()
+                }
+                console.log(exportObject);
+                var tagRef = ref.child(tagName);
+                tagRef.set(exportObject);
+              }
+
+            };
+            selectTag(e){
+              console.log(e.target.value);
+              opts = self.tagCollection[e.target.value];
+              self.tagEditor.setValue(opts.tagDef);
+              self.jsonEditor.setValue(opts.tagOpts);
+              self.styleEditor.setValue(opts.tagStyle);
+            }
+        </riot-tag-workbench>
+    </script>
+
+  <script>
+    var ref = new Firebase('https://riottagworkbench.firebaseio.com/tags/');
+    window.tagNames = [];
+    var tagsCollection = {};
+
+
+    ref.on("value", function(snapshot) {
+      tagsCollection = snapshot.val();
+      //Loop over the properties and get all tagnames.
+      tagNames= ['-None selected-'];
+      for (var property in tagsCollection) {
+        if (tagsCollection.hasOwnProperty(property)) {
+          console.log(property, tagsCollection[property]);
+          tagNames.push(property);
+        }
+      }
+      document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
+    }, function (errorObject) {
+      console.log("The read failed: " + errorObject.code);
+    });
+  var predefined = {
+    tagDef: '<riot-tag>\n <h3>New tag</h3>\n</riot-tag>',
+    tagOpts: '{"message":"New Message"}',
+    tagStyle: 'riot-tag{\n background-color:#fff;\n}'
+  };
+    riot.mount('riot-tag-workbench', predefined);
+    </script>
+</body>
+
+</html>
+

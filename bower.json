@@ -1,0 +1,8 @@
+{
+  "name": "riottagmaker",
+  "private": true,
+  "dependencies": {
+    "jquery": "~1.11.1",
+    "zepto": "~1.1.6"
+  }
+}
