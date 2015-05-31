@@ -3,6 +3,7 @@
   "private": true,
   "dependencies": {
     "jquery": "~1.11.1",
-    "zepto": "~1.1.6"
+    "zepto": "~1.1.6",
+    "css-element-queries": "~0.2.1"
   }
 }

@@ -1,6 +1,9 @@
 // bower:scss
 // endbower
 
+
+
+
 /* apply a natural box layout model to all elements, but allowing components to change */
 html {
   box-sizing: border-box;
@@ -43,34 +46,89 @@ riot-tag-workbench{
   display:flex;
   flex-flow:column;
   justify-content: space-between;
+  overflow:hidden;
 
 }
 #container{
-  border-top:1px solid black;
-  height:22rem;
+
+  min-height:23rem;
   width:100%;
+  padding-left:0.125rem;
+  padding-right:0.125rem;
+  background: black;
+  z-index:1;
 }
-#workbench{
-  position:relative;
-  display:inline-block;
+
+#iphone4{
+  width:320px;
+  height:480px;
   background:white;
-  padding:0.5rem;
-  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4);
-  overflow-x: hidden;
-  overflow-y: scroll;
-  margin:0 auto;
+  margin:0.5rem;
+  overflow-y:scroll;
+  overflow-x:hidden;
+}
+#iphone4::-webkit-scrollbar {
+    display: none;
+}
+#iphone5{
+width:320px;
+height:568px;
+background:white;
+margin:0.5rem;
+ overflow-y:scroll;
+ overflow-x:hidden;
+}
+#iphone5::-webkit-scrollbar {
+    display: none;
+}
+#iphone6{
+width:375px;
+height:667px;
+background:white;
+margin:0.5rem;
+ overflow-y:scroll;
+ overflow-x:hidden;
+}
+#iphone6::-webkit-scrollbar {
+    display: none;
+}
+#ipad{
+  width:768px;
+  height:1024px;
+  margin:0.5rem;
+  background:white;
+}
+#ipad::-webkit-scrollbar {
+    display: none;
+}
+#console{
+  width:320px;
+  height:480px;
+  background:white;
+  margin:0.5rem;
+  overflow-y:scroll;
+  overflow-x:hidden;
+}
+#console p{
+  padding:0.25rem;
+  margin:0;
 }
 #toolbar{
-  height:2rem;
+  position:relative;
+  background: linear-gradient(to bottom, #45484d 0%,#000000 100%);
+  height:2.5rem;
   line-height:2rem;
+  padding:0.25rem;
+  z-index:1;
 }
 #editors{
   display:flex;
   justify-content:space-around;
-  height:21rem;
+  height:20rem;
 }
 .editorContainers{
-  flex: 1 1 auto;
+
+    flex: 1 1 auto;
     margin:0.25rem 0.1rem;
     position:relative;
 }
@@ -109,3 +167,32 @@ riot-tag-workbench{
 #tagStyleContainer::before{
   content:'Tag style';
   }
+button{
+
+  height:1.5rem;
+  font-size:1rem;
+  line-height:1rem;
+  border:1px solid black;
+  background:rgba(255,255,255,0.6);
+
+  padding:0.25rem 0.5rem 0.25rem 0.5rem;
+  margin:0.25rem;
+  box-shadow:2px 2px 8px rgba(0,0,0,0.3);
+}
+#toolbar button img {
+  height:1rem;
+  margin:0;
+  padding:0;
+}
+select{
+  height:1.5rem;
+  font-size:1rem;
+  line-height:1rem;
+  border:1px solid silver;
+  background:rgba(255,255,255,0.7);
+  border-radius:0.25rem;
+  padding:0 0.25rem 0 0.25rem;
+  margin-top:-2rem;
+  position:relative;
+  top:-0.25rem;
+}

@@ -15,6 +15,8 @@
     <!-- build:css(.tmp) styles/main.css -->
     <link rel="stylesheet" href="styles/main.css">
     <!-- endbuild -->
+    <link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Roboto+Condensed:300italic,400italic,700italic,400,300,700' rel='stylesheet' type='text/css'>
 </head>
 
 <body>
@@ -27,6 +29,8 @@
     <!-- bower:js -->
     <script src="bower_components/zepto/zepto.js"></script>
     <script src="bower_components/jquery/dist/jquery.js"></script>
+    <script src="bower_components/css-element-queries/src/ElementQueries.js"></script>
+    <script src="bower_components/css-element-queries/src/ResizeSensor.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
@@ -54,27 +58,200 @@
     <script src="scripts/index.js"></script>
     <!-- endbuild -->
 
+
+
+  <script type="riot/tag">
+    <store-userauth>
+
+        var self = this;
+        self.authData = {};
+        self.tagName = self.root.tagName.toLowerCase();
+        self.isAuthenticated = false;
+        self.on('mount', function(){
+          //Register with the appdispatcher.
+          window.appDispatcher.addStore(self);
+          //Reference to firebase.
+          self.ref = new Firebase('https://riottagworkbench.firebaseio.com/tags/');
+          //self.userRef;
+          //If authenticated then listen for changes to the usertags data.
+          self.authData = self.ref.getAuth();
+
+          if (self.authData){
+            //If authenticated create a user reference object.
+            self.isAuthenticated = true;
+            window.appDispatcher.trigger('user-authenticated', self.authData);
+          }
+        });
+        //Create a firebase reference.
+
+    </store-userauth>
+  </script>
+
+    <!--
+       - The appdispatcher. This is the traffic-controller for actions to the stores.
+    -->
+    <script type="riot/tag">
+      <app-dispatcher>
+
+
+        var self = this;
+        self._RiotControlApi = ['on','one','off','trigger'];
+        self.RiotControl = {
+          _stores: [],
+          addStore: function(store) {
+            this._stores.push(store)
+          }
+        }
+        self._RiotControlApi.forEach(function(api){
+          self.RiotControl[api] = function() {
+            //console.log('some api shit: ' + api);
+            var args = [].slice.call(arguments)
+            this._stores.forEach(function(el){
+              //console.log(api + ' on store ', el);
+                el[api].apply(null, args)
+              })
+          }
+        })
+        self.on('mount', function(){
+          window.appDispatcher = self.RiotControl;
+          console.log(self.root.parentNode.tagName);
+          var readyEvent = new Event('dipatcherReady');
+          document.dispatchEvent(readyEvent);
+          self.root.parentNode._tag.trigger('dispatcherReady');
+        });
+      </app-dispatcher>
+    </script>
+
+
+    <script type="riot/tag">
+      <store-somedata>
+          var self = this;
+          self.tagName = self.root.tagName.toLowerCase();
+          this._data = ["Apa", "Häst", "Kossa"];
+          this.on(self.tagName + '-add-data', function(newData){
+            self._data.push(newData);
+            console.log(self._data);
+          });
+          self.on(self.tagName + '-init', function(){
+            window.appDispatcher.trigger(self.tagName + '-collection-changed', self._data);
+            console.log('some one inited med');
+          });
+          this.on('mount', function(){
+            console.log( self.root.tagName + ' mounted');
+            window.appDispatcher.addStore(self);
+          });
+      </store-somedata>
+    </script>
+
+
+
+  <!--
+     * Keeps track of the tags, both user tags and the public tags.
+     -->
+  <script type="riot/tag">
+    <store-usertags>
+
+      var self = this;
+      self.tagName = self.root.tagName.toLowerCase();
+      self.userTags = [];
+      self.tagNames = [];
+      self.onNewValues = function(collection){
+              self.tagsCollection = collection;
+              //Loop over the properties and get all tagnames.
+              self.tagNames= ['- My Tags -'];
+              for (var property in collection) {
+                if (collection.hasOwnProperty(property)) {
+                  self.tagNames.push(property);
+                }
+              }
+              window.tagsCollection = self.tagsCollection;
+              window.appDispatcher.trigger('tagnames-changed', self.tagNames);
+              window.appDispatcher.trigger('usertags-changed', self.tagsCollection);
+
+              document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
+      };
+
+        self.on('user-authenticated', function(authData){
+            self.userRef = new Firebase('https://riottagworkbench.firebaseio.com/tags/usersTags/' + authData.uid);
+            //Listen to changes on the collection.
+            self.userRef.on("value", function(snapshot) {
+              //Trigger event when something happened.
+              self.onNewValues(snapshot.val())
+              //window.appDispatcher.trigger(self.tagName + '-collection-changed', snapshot.val());
+            }, function (errorObject) {
+              console.log("The read failed: " + errorObject.code);
+            });
+
+        });
+
+      self.on('mount', function(){
+        //Register with dispatcher.
+        if (window.appDispatcher) {
+          //If appDispatcher is ready then register
+          window.appDispatcher.addStore(self);
+        } else {
+          //AppDispatcher not ready yet, register event to wiat for it to be ready.
+          document.addEventListener('dipatcherReady', function(){
+            window.appDispatcher.addStore(self);
+          });
+        }
+
+      })
+
+      self.on('add-new-tag', function(newTagDef){
+        var tagRef = self.userRef.child(newTagDef.tagName);
+        tagRef.set(newTagDef);
+      })
+
+    </store-usertags>
+  </script>
+
+
     <script type="riot/tag">
         <riot-tag-workbench>
-            <div id="workbench">
+          <app-dispatcher></app-dispatcher>
+          <store-somedata></store-somedata>
+          <store-usertags></store-usertags>
+          <store-userauth id="userAuth"></store-userauth>
 
+            <div style="display:flex;flex-flow:row nowrap">
+              <div id="iphone4">&nbsp;</div>
+              <div id="iphone5"></div>
+              <div id="ipad"></div>
+              <div id="console"></div>
             </div>
             <div id="container">
-              <div id="toolbar">
-                <button onclick="{ renderTag }" type="button">Render</button>
-                <button onclick="{ exportTag }" type="button">Save</button>
-                <select onchange="{selectTag}" name="tagSelector"><option each={tagname in tagNames}>{tagname}</option></select>
-                <button onclick="{ toggleTagEditor }" type="button">{ showTagEditor ? 'Hide tageditor' : 'Show tageditor'}</button>
-                <button onclick="{ toggleStyleEditor }" type="button">{ showStyleEditor ? 'Hide styles' : 'Show styles'}</button>
-                <button onclick="{ toggleJsonEditor }" type="button">{ showJsonEditor ? 'Hide tag options' : 'Show tag options'}</button>
-                <button onclick="{ clearAll }" type="button">Clear all</button>
-              </div>
               <div id="editors">
-                <div id="tagDefContainer" class="editorContainers" show={showTagEditor}> </div>
+
+                <div id="tagDefContainer" class="editorContainers" show={showTagEditor}></div>
                 <div id="tagStyleContainer" class="editorContainers" show={showStyleEditor}></div>
                 <div id="tagOptsContainer" class="editorContainers" show={showJsonEditor}></div>
-              </div>
 
+              </div>
+              <div id="toolbar">
+                <select onchange="{selectTag}" name="tagSelector"><option each={tagname in tagNames}>{tagname}</option></select>
+                <button onclick="{ renderTag }" type="button" title="Compile and display on screen">
+                  <img src="../images/cycle.svg" style="height:1rem;padding:0;margin:0;" />
+                </button>
+                <button onclick="{ exportTag }" type="button" title="Save">
+                  <img src="../images/save.svg" style="height:1rem;padding:0;margin:0;" />
+                </button>
+                <button onclick="{ toggleTagEditor }" type="button" title="{ showTagEditor ? 'Hide tageditor' : 'Show tageditor'}">
+                  <img src="../images/tag.svg" />
+                </button>
+                <button onclick="{ toggleStyleEditor }" type="button" title="{ showStyleEditor ? 'Hide styles' : 'Show styles'}">
+                  <img src="../images/news.svg" />
+                </button>
+                <button onclick="{ toggleJsonEditor }" type="button" title="{ showJsonEditor ? 'Hide tag options' : 'Show tag options'}">
+                  <img src="../images/database.svg" />
+                </button>
+                <button onclick="{ clearAll }" type="button" title="Clear all code from the editors.">
+                  <img src="../images/cross.svg" />
+                </button>
+                <button onclick="{ addTagReferences }" type="button" title="Include other tags.">
+                  <img src="../images/plus.svg" />
+                </button>
+              </div>
             </div>
             var self = this;
             self.showTagEditor = true;
@@ -122,25 +299,28 @@
                 setOptions = true;
               }
 
-
-              console.log(self.jsonEditor.getValue());
-              console.log(tagOptionsObject);
-
               //Compile the tag.
               var newTag = riot.compile(self.tagEditor.getValue());
 
               //Create element and append to view.
               var newTagEl = document.createElement(tagName);
-              this.workbench.innerHTML = '';
-              this.workbench.appendChild(newTagEl);
+              //this.workbench.innerHTML = '';
+              //this.workbench.appendChild(newTagEl);
+              this.iphone4.innerHTML = '';
+              this.iphone5.innerHTML = '';
+              this.ipad.innerHTML = '';
 
+              this.iphone4.appendChild(document.createElement(tagName));
+              this.iphone5.appendChild(document.createElement(tagName));
+              this.ipad.appendChild(document.createElement(tagName));
               //Inject style.
               var styleTags = this.root.getElementsByTagName('style');
               if (styleTags.length > 0) {
                 this.root.removeChild(styleTags[0]);
               }
 
-              this.root.insertAdjacentHTML('afterbegin', '<style>' + self.styleEditor.getValue() + '</style>');
+              //Inject the style in this tag. (Scoped to this element, so the user is able to change the look of the editors also...)
+              this.root.insertAdjacentHTML('afterbegin', '<style scoped>' + self.styleEditor.getValue() + '</style>');
 
               //Mount the tag.
               if (setOptions){
@@ -153,7 +333,7 @@
             }
             self.storeTag = function(uid){
               var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
-              if (confirm('Do you want to export tag: ' + tagName)){
+              if (confirm('This will overwrite previously saved tags\nwith the same name: ' + tagName + '\n\nAre you sure?')){
                 var exportObject = {
                   tagName: tagName,
                   tagDef: self.tagEditor.getValue(),
@@ -162,13 +342,14 @@
                 }
                 console.log(exportObject);
 
-                var tagRef = userRef.child(tagName);
-                tagRef.set(exportObject);
+                window.appDispatcher.trigger('add-new-tag', exportObject);
+
               }
             };
 
             exportTag(e){
-              var authData = ref.getAuth();
+
+              var authData = self.userAuth._tag.authData;
               if (authData){
                 //Store to the users id.
 
@@ -199,7 +380,7 @@
               self.showJsonEditor = true;
 
               //Set the editors values from store.
-
+              //self.tagCodeEditor._tag.trigger('set-content',  opts.tagDef ? opts.tagDef : '' );
               self.tagEditor.setValue(opts.tagDef ? opts.tagDef : '', -1);
               self.jsonEditor.setValue(opts.tagOpts ? opts.tagOpts : '', -1);
               self.styleEditor.setValue(opts.tagStyle ? opts.tagStyle : '', -1);
@@ -215,13 +396,26 @@
               self.showJsonEditor = !self.showJsonEditor;
             }
 
-            this.on('newTags', function(){
-              //setTimeout(function(){
-                self.tagnames = window.tagNames;
-                self.tagCollection = window.tagsCollection;
+            self.on('dispatcherReady', function(){
+              window.appDispatcher.addStore(self);
+              console.log('dispatcherReady');
+              self.on('tagnames-changed', function(tagNames){
+                console.log('tagnames changed');
+                self.tagNames = tagNames;
                 self.update();
-              //},1500)
+              });
+              self.on('usertags-changed', function(tagsCollection){
+                self.tagCollection = tagsCollection;
+                self.update();
+              });
             });
+            self.on('store-userauth-collection-changed', function(){
+              console.log('data changed');
+            });
+
+
+
+
             this.on('mount', function(){
               self.tagEditor = ace.edit("tagDefContainer");
               self.tagEditor.setTheme("ace/theme/monokai");
@@ -249,40 +443,26 @@
 
   <script>
 
-    var ref = new Firebase('https://riottagworkbench.firebaseio.com/tags/');
-    var userRef;
-    var authData = ref.getAuth();
-    if (authData){
-      window.tagNames = [];
-      var tagsCollection = {};
-      userRef = new Firebase('https://riottagworkbench.firebaseio.com/tags/usersTags/' + authData.uid);
-
-      userRef.on("value", function(snapshot) {
-        tagsCollection = snapshot.val();
-        //Loop over the properties and get all tagnames.
-        tagNames= ['-None selected-'];
-        for (var property in tagsCollection) {
-          if (tagsCollection.hasOwnProperty(property)) {
-            console.log(property, tagsCollection[property]);
-            tagNames.push(property);
-          }
-        }
-        document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
-      }, function (errorObject) {
-        console.log("The read failed: " + errorObject.code);
-      });
-    }
-
 
 
   var predefined = {
-    tagDef: '<riot-tag>\n <h3>New tag</h3>\n</riot-tag>',
+    tagDef: "<riot-tag>\n <h3>New tag</h3>\n <script>\n \n <\/script> \n</riot-tag>",
     tagOpts: '{"message":"New Message"}',
     tagStyle: 'riot-tag{\n background-color:#fff;\n}'
   };
-
-
-    riot.mount('riot-tag-workbench', predefined);
+//Replace console.log
+var c = function() {
+    return({
+        log: function(msg) {
+          consoleDiv = document.getElementById('console');
+          para = document.createElement('p');
+          text = document.createTextNode(msg);
+          para.appendChild(text);
+          consoleDiv.insertBefore(para, consoleDiv.firstChild);
+        }
+    });
+}();
+    riot.mount('*', predefined);
     </script>
 </body>
 
