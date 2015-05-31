@@ -12,5 +12,5 @@ Some convention for eventnaming is needed, and it should be as close to dom even
 
 Viewcomponents and store components.
 
-##Applicaiton structure.
+##Application structure.
 Try to follow the pattern that facebook uses with its react and flux pattern, create listening/controller-views, and build those up of smaller components. The "listening/eventemitting/controller-view" would be the one that listens to the changes of its smaller parts and communicates with the dispatcher. This "communicator-tag" would probably pretty often be the actual page-tag. 
