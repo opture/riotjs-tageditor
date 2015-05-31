@@ -69,7 +69,7 @@
         self.isAuthenticated = false;
         self.on('mount', function(){
           //Register with the appdispatcher.
-          window.appDispatcher.addStore(self);
+          window.app.dispatcher.addStore(self);
           //Reference to firebase.
           self.ref = new Firebase('https://riottagworkbench.firebaseio.com/tags/');
           //self.userRef;
@@ -79,7 +79,7 @@
           if (self.authData){
             //If authenticated create a user reference object.
             self.isAuthenticated = true;
-            window.appDispatcher.trigger('user-authenticated', self.authData);
+            window.app.dispatcher.trigger('user-authenticated', self.authData);
           }
         });
         //Create a firebase reference.
@@ -95,29 +95,45 @@
 
 
         var self = this;
+
+        //Spi functions.
         self._RiotControlApi = ['on','one','off','trigger'];
+
+
         self.RiotControl = {
           _stores: [],
           addStore: function(store) {
             this._stores.push(store)
           }
         }
+
+
         self._RiotControlApi.forEach(function(api){
+
           self.RiotControl[api] = function() {
-            //console.log('some api shit: ' + api);
+
+            //Make an argument array.
             var args = [].slice.call(arguments)
+
+            //Lop over the stores and trigger the events supplied.
             this._stores.forEach(function(el){
-              //console.log(api + ' on store ', el);
-                el[api].apply(null, args)
-              })
+              el[api].apply(null, args)
+            });
           }
+
         })
+
         self.on('mount', function(){
-          window.appDispatcher = self.RiotControl;
-          console.log(self.root.parentNode.tagName);
-          var readyEvent = new Event('dipatcherReady');
+          //If there is no app object.
+          if (!window.app){
+            window.app = {};
+          }
+
+          //Register the dispatcher with the app.
+          window.app.dispatcher = self.RiotControl;
+          //Emit event so everyone can start working.
+          var readyEvent = new Event('dispatcher-ready');
           document.dispatchEvent(readyEvent);
-          self.root.parentNode._tag.trigger('dispatcherReady');
         });
       </app-dispatcher>
     </script>
@@ -133,12 +149,21 @@
             console.log(self._data);
           });
           self.on(self.tagName + '-init', function(){
-            window.appDispatcher.trigger(self.tagName + '-collection-changed', self._data);
+            window.app.dispatcher.trigger(self.tagName + '-collection-changed', self._data);
             console.log('some one inited med');
           });
-          this.on('mount', function(){
-            console.log( self.root.tagName + ' mounted');
-            window.appDispatcher.addStore(self);
+          self.on('mount', function(){
+            //Register with dispatcher.
+            if (window.app.dispatcher) {
+              //If appDispatcher is ready then register
+              window.app.dispatcher.addStore(self);
+            } else {
+              //AppDispatcher not ready yet, register event to wiat for it to be ready.
+              document.addEventListener('dispatcher-ready', function(){
+                window.app.dispatcher.addStore(self);
+              });
+            }
+
           });
       </store-somedata>
     </script>
@@ -165,8 +190,8 @@
                 }
               }
               window.tagsCollection = self.tagsCollection;
-              window.appDispatcher.trigger('tagnames-changed', self.tagNames);
-              window.appDispatcher.trigger('usertags-changed', self.tagsCollection);
+              window.app.dispatcher.trigger('tagnames-changed', self.tagNames);
+              window.app.dispatcher.trigger('usertags-changed', self.tagsCollection);
 
               document.querySelector('riot-tag-workbench')._tag.trigger('newTags');
       };
@@ -177,7 +202,7 @@
             self.userRef.on("value", function(snapshot) {
               //Trigger event when something happened.
               self.onNewValues(snapshot.val())
-              //window.appDispatcher.trigger(self.tagName + '-collection-changed', snapshot.val());
+              //window.app.dispatcher.trigger(self.tagName + '-collection-changed', snapshot.val());
             }, function (errorObject) {
               console.log("The read failed: " + errorObject.code);
             });
@@ -186,19 +211,23 @@
 
       self.on('mount', function(){
         //Register with dispatcher.
-        if (window.appDispatcher) {
+        if (window.app.dispatcher) {
           //If appDispatcher is ready then register
-          window.appDispatcher.addStore(self);
+          window.app.dispatcher.addStore(self);
         } else {
           //AppDispatcher not ready yet, register event to wiat for it to be ready.
-          document.addEventListener('dipatcherReady', function(){
-            window.appDispatcher.addStore(self);
+          document.addEventListener('dispatcher-ready', function(){
+            window.app.dispatcher.addStore(self);
           });
         }
 
-      })
+      });
 
       self.on('add-new-tag', function(newTagDef){
+        console.log('actually storing: ', newTagDef);
+        // if (!Object.keys(newTagDef.tagRefs).length){
+        //   newTagDef.tagRefs = null;
+        // }
         var tagRef = self.userRef.child(newTagDef.tagName);
         tagRef.set(newTagDef);
       })
@@ -248,6 +277,7 @@
                 <button onclick="{ clearAll }" type="button" title="Clear all code from the editors.">
                   <img src="../images/cross.svg" />
                 </button>
+                <select name="referenceTags"><option each={tagname in tagNames}>{tagname}</option></select>
                 <button onclick="{ addTagReferences }" type="button" title="Include other tags.">
                   <img src="../images/plus.svg" />
                 </button>
@@ -273,6 +303,66 @@
               self.tagSelector.selectedIndex = 0;
             };
 
+            self.currentTagReferences = {};
+
+            self.addTagReferences = function(tagName){
+              var refTagOpts = self.tagCollection[self.referenceTags.value];
+              var refTag = riot.compile(refTagOpts.tagDef);
+              self.currentTagReferences[refTagOpts.tagName] = '';
+              console.log(self.currentTagReferences);
+            }
+
+            /** Loops over the referenced tags and compiles all of them.
+              */
+            self.compileReferences = function(){
+              console.log('compile references');
+              //Compiles all the references for the selected tag.
+              //Loop over the keys in the tagrefs object, this is to avoid firebase issue with arrays.
+              for (var property in self.currentTagReferences) {
+                if (self.currentTagReferences.hasOwnProperty(property)) {
+                  c.log('compile ref: ' + property);
+                  //Get the tag from the tags collection.
+                  opts = self.tagCollection[property];
+
+                  //Compile the tag.
+                  riot.compile(opts.tagDef);
+
+                  //
+                }
+              }
+            }
+            self.mountReferences = function(){
+              for (var property in self.currentTagReferences) {
+                if (self.currentTagReferences.hasOwnProperty(property)) {
+
+                  opts = self.tagCollection[property];
+
+                  var nestedTagsList = document.getElementsByTagName(opts.tagName);
+
+                  for (var x=0; x<nestedTagsList.length;x++){
+                    nestedTagsList[x]._tag.unmount(true);
+                    //nestedTagsList[x]._tag.opts = opts.tagOpts;
+                  }
+                  //riot.mount(opts.tagName, opts.tagOpts);
+                }
+              }
+            }
+            /** Loops over the referenced tags and concatenates a string with all the styling for the tags.
+              * @return {string} - String containing all the css styles for all referenced tags.
+              */
+            self.getReferencedStyles = function(){
+              var concatenatedStyles = '';
+              for (var property in self.currentTagReferences) {
+                if (self.currentTagReferences.hasOwnProperty(property)) {
+
+                  opts = self.tagCollection[property];
+
+                  //Compile the tag.
+                  concatenatedStyles += opts.tagStyle;
+                }
+              }
+              return concatenatedStyles;
+            }
             self.renderTag = function(e){
               e.preventDefault();
 
@@ -291,7 +381,7 @@
 
               //Parse the tagname.
               var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
-
+              self.createReferences(tagName, self.tagEditor.getValue());
               //Consider it to be an object and parse it to javascript.
               var jsonValue  = self.jsonEditor.getValue();
               if (jsonValue){
@@ -299,8 +389,13 @@
                 setOptions = true;
               }
 
+              //Compile the references
+              self.compileReferences();
+
               //Compile the tag.
               var newTag = riot.compile(self.tagEditor.getValue());
+
+
 
               //Create element and append to view.
               var newTagEl = document.createElement(tagName);
@@ -320,7 +415,7 @@
               }
 
               //Inject the style in this tag. (Scoped to this element, so the user is able to change the look of the editors also...)
-              this.root.insertAdjacentHTML('afterbegin', '<style scoped>' + self.styleEditor.getValue() + '</style>');
+              this.root.insertAdjacentHTML('afterbegin', '<style scoped>' + self.getReferencedStyles() +  self.styleEditor.getValue() + '</style>');
 
               //Mount the tag.
               if (setOptions){
@@ -328,24 +423,48 @@
               }else{
                 riot.mount(tagName);
               }
-
+              self.mountReferences();
 
             }
             self.storeTag = function(uid){
+
               var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
+              self.createReferences(tagName, self.tagEditor.getValue());
               if (confirm('This will overwrite previously saved tags\nwith the same name: ' + tagName + '\n\nAre you sure?')){
                 var exportObject = {
                   tagName: tagName,
                   tagDef: self.tagEditor.getValue(),
                   tagOpts: self.jsonEditor.getValue(),
-                  tagStyle: self.styleEditor.getValue()
+                  tagStyle: self.styleEditor.getValue(),
+                  tagRefs: self.currentTagReferences || {}
                 }
                 console.log(exportObject);
 
-                window.appDispatcher.trigger('add-new-tag', exportObject);
+                window.app.dispatcher.trigger('add-new-tag', exportObject);
 
               }
             };
+            self.createReferences = function(tagName, tagHtml){
+              //Loop over the current html and get the tagnames from all the tags.
+              self.currentTagReferences = {}; //reset the references.
+
+              //Create a fakeDiv to find possible references to tags.
+              var fakeDiv = document.createElement('div');
+
+              fakeDiv.insertAdjacentHTML('afterbegin', tagHtml);
+
+              //Loop over all the currently loaded customtags and create references to them if they exist in the tag.
+              self.tagNames.forEach(function(customTagName){
+
+                //Find the tag in the html and add it to references.
+                var customElementList = fakeDiv.getElementsByTagName(customTagName);
+                //If one or more exist and its not the current tag, then add reference.
+                if (customElementList.length && customTagName !== tagName){
+                  self.currentTagReferences[customTagName] = '';
+                }
+
+              });
+            }
 
             exportTag(e){
 
@@ -384,20 +503,30 @@
               self.tagEditor.setValue(opts.tagDef ? opts.tagDef : '', -1);
               self.jsonEditor.setValue(opts.tagOpts ? opts.tagOpts : '', -1);
               self.styleEditor.setValue(opts.tagStyle ? opts.tagStyle : '', -1);
+              self.currentTagReferences = opts.tagRefs;
+              console.log('references');
+              console.log(self.currentTagReferences);
+              console.log(opts.tagRefs);
+
               self.renderTag(e);
             }
+
+            //Display or hide the tageditor
             toggleTagEditor(e){
               self.showTagEditor = !self.showTagEditor;
             };
+
+            //Display or hide the styles editor
             toggleStyleEditor(e){
               self.showStyleEditor = !self.showStyleEditor;
             };
+
+            //Display or hide the moch data editor.
             toggleJsonEditor(e){
               self.showJsonEditor = !self.showJsonEditor;
             }
-
-            self.on('dispatcherReady', function(){
-              window.appDispatcher.addStore(self);
+            document.addEventListener('dispatcher-ready', function(){
+              window.app.dispatcher.addStore(self);
               console.log('dispatcherReady');
               self.on('tagnames-changed', function(tagNames){
                 console.log('tagnames changed');
@@ -409,6 +538,7 @@
                 self.update();
               });
             });
+
             self.on('store-userauth-collection-changed', function(){
               console.log('data changed');
             });
