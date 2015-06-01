@@ -2,6 +2,7 @@
   <app-dispatcher></app-dispatcher>
   <store-somedata></store-somedata>
   <store-usertags></store-usertags>
+  <store-tagcategories></store-tagcategories>
   <store-userauth id="userAuth"></store-userauth>
 
     <div style="display:flex;flex-flow:row nowrap">
@@ -45,6 +46,7 @@
         <button onclick="{ logOut }" type="button" title="Log out.">
           <img src="../images/cross.svg" />
         </button>
+        <tagcategories-chooser name="tagCategories"></tagcategories-chooser>
       </div>
     </div>
     <script>
@@ -199,7 +201,7 @@
 
     }
     self.storeTag = function(uid){
-
+      console.log(self.tagCategories._tag.selected);
       var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
       self.createReferences(tagName, self.tagEditor.getValue());
       if (confirm('This will overwrite previously saved tags\nwith the same name: ' + tagName + '\n\nAre you sure?')){
@@ -208,7 +210,8 @@
           tagDef: self.tagEditor.getValue(),
           tagOpts: self.jsonEditor.getValue(),
           tagStyle: self.styleEditor.getValue(),
-          tagRefs: self.currentTagReferences || {}
+          tagRefs: self.currentTagReferences || {},
+          tagCategory: self.tagCategories._tag.selected
         }
         console.log(exportObject);
 
@@ -279,6 +282,7 @@
       self.jsonEditor.setValue(opts.tagOpts ? opts.tagOpts : '', -1);
       self.styleEditor.setValue(opts.tagStyle ? opts.tagStyle : '', -1);
       self.currentTagReferences = opts.tagRefs;
+      self.tagCategories._tag.selector.value = opts.tagCategory;
       console.log('references');
       console.log(self.currentTagReferences);
       console.log(opts.tagRefs);

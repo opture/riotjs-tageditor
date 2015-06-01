@@ -230,7 +230,7 @@ module.exports = function (grunt) {
       },
       pages: {
           src: '<%= config.app %>/tags/pages/*.tag',
-          dest: '<%= config.app %>/js/tags/pages.js'
+          dest: '<%= config.app %>/scripts/tags/pages.js'
           //expand: true,
           //cwd: '<%= config.app %>/tags/',
           //src: '**/*.tag',
@@ -239,7 +239,7 @@ module.exports = function (grunt) {
       },
       elements: {
           src: '<%= config.app %>/tags/elements/*.tag',
-          dest: '<%= config.app %>/js/tags/elements.js'
+          dest: '<%= config.app %>/scripts/tags/elements.js'
           //expand: true,
           //cwd: '<%= config.app %>/tags/',
           //src: '**/*.tag',
