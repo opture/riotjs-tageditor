@@ -2,8 +2,8 @@
   "name": "riottagmaker",
   "private": true,
   "dependencies": {
-    "jquery": "~1.11.1",
-    "zepto": "~1.1.6",
-    "css-element-queries": "~0.2.1"
+    "css-element-queries": "~0.2.1",
+    "ace-builds": "~1.1.9",
+    "riotjs": "~2.1.0"
   }
 }

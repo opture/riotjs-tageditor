@@ -56,6 +56,13 @@ module.exports = function (grunt) {
         files: ['<%= config.app %>/styles/{,*/}*.css'],
         tasks: ['newer:copy:styles', 'autoprefixer']
       },
+      riottags:{
+        files: ['<%= config.app %>/tags/{,*/}*.tag'],
+        tasks: ['riot'],
+        options: {
+          livereload: '<%= connect.options.livereload %>'
+        }
+      },
       livereload: {
         options: {
           livereload: '<%= connect.options.livereload %>'
@@ -217,7 +224,29 @@ module.exports = function (grunt) {
         }
       }
     },
-
+    riot: {
+      options: {
+        concat : true
+      },
+      pages: {
+          src: '<%= config.app %>/tags/pages/*.tag',
+          dest: '<%= config.app %>/js/tags/pages.js'
+          //expand: true,
+          //cwd: '<%= config.app %>/tags/',
+          //src: '**/*.tag',
+          //dest: 'js/tags.js',
+          //ext: '.js'
+      },
+      elements: {
+          src: '<%= config.app %>/tags/elements/*.tag',
+          dest: '<%= config.app %>/js/tags/elements.js'
+          //expand: true,
+          //cwd: '<%= config.app %>/tags/',
+          //src: '**/*.tag',
+          //dest: 'js/tags.js',
+          //ext: '.js'
+      },
+    },
     // Reads HTML for usemin blocks to enable smart builds that automatically
     // concat, minify and revision files. Creates configurations in memory so
     // additional tasks can operate on them
@@ -370,6 +399,7 @@ module.exports = function (grunt) {
     grunt.task.run([
       'clean:server',
       'wiredep',
+      'riot',
       'concurrent:server',
       'autoprefixer',
       'connect:livereload',
@@ -400,6 +430,7 @@ module.exports = function (grunt) {
   grunt.registerTask('build', [
     'clean:dist',
     'wiredep',
+    'riot',
     'useminPrepare',
     'concurrent:dist',
     'autoprefixer',
