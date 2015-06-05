@@ -2,8 +2,6 @@
   "name": "riottagmaker",
   "private": true,
   "dependencies": {
-    "css-element-queries": "~0.2.1",
-    "ace-builds": "~1.1.9",
-    "riotjs": "~2.1.0"
+    "css-element-queries": "~0.2.1"
   }
 }

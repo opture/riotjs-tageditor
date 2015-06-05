@@ -6,18 +6,19 @@
   <store-userauth id="userAuth"></store-userauth>
 
     <div style="display:flex;flex-flow:row nowrap">
-      <div id="iphone4">&nbsp;</div>
-      <div id="iphone5"></div>
+      <!-- <div id="iphone4">&nbsp;</div> -->
+      <!-- <div id="iphone5"></div> -->
       <div id="ipad"></div>
       <div id="console"></div>
     </div>
     <div id="container">
       <div id="editors">
-
-        <div id="tagDefContainer" class="editorContainers" show={showTagEditor}></div>
-        <div id="tagStyleContainer" class="editorContainers" show={showStyleEditor}></div>
-        <div id="tagOptsContainer" class="editorContainers" show={showJsonEditor}></div>
-
+        <ace-editor name="tagEditor" style="position:relative;" onready="{setTagDefinitionValue}" class="editorContainers" mode="html" show={showTagEditor}>
+        </ace-editor>
+        <ace-editor name="jsonEditor" style="position:relative;" onready="{setTagStyleValue}" class="editorContainers" mode="css" show={showStyleEditor}>
+        </ace-editor>
+        <ace-editor name="styleEditor" style="position:relative;" onready="{setTagOptionsValue}" class="editorContainers" mode="json" show={showJsonEditor}>
+        </ace-editor>
       </div>
       <div id="toolbar">
         <select onchange="{selectTag}" name="tagSelector"><option each={tagname in tagNames}>{tagname}</option></select>
@@ -46,19 +47,30 @@
         <button onclick="{ logOut }" type="button" title="Log out.">
           <img src="../images/cross.svg" />
         </button>
-        <tagcategories-chooser name="tagCategories"></tagcategories-chooser>
+        <tagcategories-chooser name="tagCategories" onselected="{setTagCategory}"></tagcategories-chooser>
+        <button onclick="{ downloadTag }" type="button" title="Download tag">
+          <img src="../images/download.svg" />
+        </button>
+        <button onclick="{ showHelp }" type="button" title="Help">
+          <img src="../images/help-with-circle.svg" />
+        </button>
       </div>
     </div>
     <script>
+    'use strict';
     var self = this;
     self.showTagEditor = true;
     self.showStyleEditor = true;
     self.showJsonEditor = true;
 
-    this.getTagNames = function(){
-      $.get('https://riottagworkbench.firebaseio.com/tags.json', function(data){
-        console.log(data);
-      });
+    // this.getTagNames = function(){
+    //   $.get('https://riottagworkbench.firebaseio.com/tags.json', function(data){
+    //     console.log(data);
+    //   });
+    // }
+    self.setTagCategory = function(category){
+      console.log('callback on category change');
+      self.tagCategory = category;
     }
     self.clearAll = function(){
       //Clear all the editors.
@@ -77,10 +89,64 @@
     }
 
     self.addTagReferences = function(tagName){
+      //Fetch the description for the current tag.
       var refTagOpts = self.tagCollection[self.referenceTags.value];
-      var refTag = riot.compile(refTagOpts.tagDef);
-      self.currentTagReferences[refTagOpts.tagName] = '';
-      console.log(self.currentTagReferences);
+
+      //Create references
+      self.createReferences(refTagOpts.tagName, refTagOpts.tagDef);
+      console.log('tagrefs',self.currentTagReferences);
+
+      //Create elements that we can use to render the document.
+      var exportContainer = document.createElement('div');
+
+      //Append styling to the tag.
+      var styleTag = document.createElement('style');
+      styleTag.innerHTML =  self.tagCollection['insignia-tag-description'].tagStyle;
+
+      //Create element to hold the data.
+      var tagDescriptionElement = document.createElement('insignia-tag-description-with-references');
+
+      //The style is added.
+      exportContainer.appendChild(styleTag);
+
+      //Add the requested element first.
+      var tagsToDisplay = [];
+      tagsToDisplay.push(refTagOpts);
+
+
+
+
+      // //Loop over the references and append to a long long string.
+      // for (var x = 0; x<self.currentTagReferences.length;x++){
+      //   var opts = self.tagCollection[currentTagReferences[x]];
+
+      // }
+
+      //Loop over the keys in the tagrefs object, this is to avoid firebase issue with arrays.
+      for (var property in self.currentTagReferences) {
+        if (self.currentTagReferences.hasOwnProperty(property)) {
+          //Get the tag from the tags collection.
+          opts = self.tagCollection[property];
+          tagsToDisplay.push(opts);
+
+        }
+      }
+
+      //Add the description for the requested element.
+      exportContainer.appendChild(tagDescriptionElement);
+
+      document.body.appendChild(exportContainer);
+      var THEtag = riot.mount('insignia-tag-description-with-references',{tags:tagsToDisplay} );
+
+
+
+
+      var divText = exportContainer.outerHTML;
+      var myWindow = window.open('','','width=900,height=700');
+      var doc = myWindow.document;
+      doc.open();
+      doc.write(divText);
+      doc.close();
     }
 
     /** Loops over the referenced tags and compiles all of them.
@@ -128,7 +194,7 @@
 
           opts = self.tagCollection[property];
 
-          //Compile the tag.
+          //Concatenate styles.
           concatenatedStyles += opts.tagStyle;
         }
       }
@@ -175,12 +241,12 @@
       var newTagEl = document.createElement(tagName);
       //this.workbench.innerHTML = '';
       //this.workbench.appendChild(newTagEl);
-      this.iphone4.innerHTML = '';
-      this.iphone5.innerHTML = '';
+      //this.iphone4.innerHTML = '';
+      //this.iphone5.innerHTML = '';
       this.ipad.innerHTML = '';
 
-      this.iphone4.appendChild(document.createElement(tagName));
-      this.iphone5.appendChild(document.createElement(tagName));
+      //this.iphone4.appendChild(document.createElement(tagName));
+      //this.iphone5.appendChild(document.createElement(tagName));
       this.ipad.appendChild(document.createElement(tagName));
       //Inject style.
       var styleTags = this.root.getElementsByTagName('style');
@@ -201,23 +267,27 @@
 
     }
     self.storeTag = function(uid){
-      console.log(self.tagCategories._tag.selected);
-      var tagName = self.tagEditor.getValue().substring(self.tagEditor.getValue().indexOf('<')+1, self.tagEditor.getValue().indexOf('>'));
-      self.createReferences(tagName, self.tagEditor.getValue());
-      if (confirm('This will overwrite previously saved tags\nwith the same name: ' + tagName + '\n\nAre you sure?')){
+      console.log(self.tagCategory);
+      var tagDefVal = self.tagEditor.getValue();
+      //Get the name as the name between opening and closing first tag.
+      var tagName = tagDefVal.substring(tagDefVal.indexOf('<')+1, tagDefVal.indexOf('>'));
+      //Find and create a list of references for the tagItem.
+      self.createReferences(tagName, tagDefVal);
+
+      //if (confirm('This will overwrite previously saved tags\nwith the same name: ' + tagName + '\n\nAre you sure?')){
         var exportObject = {
           tagName: tagName,
-          tagDef: self.tagEditor.getValue(),
+          tagDef: tagDefVal,
           tagOpts: self.jsonEditor.getValue(),
           tagStyle: self.styleEditor.getValue(),
           tagRefs: self.currentTagReferences || {},
-          tagCategory: self.tagCategories._tag.selected
+          tagCategory: self.tagCategory
         }
-        console.log(exportObject);
 
+        //Call and let the store handle the backend.
         window.app.dispatcher.trigger('add-new-tag', exportObject);
 
-      }
+      //}
     };
     self.createReferences = function(tagName, tagHtml){
       //Loop over the current html and get the tagnames from all the tags.
@@ -244,6 +314,7 @@
       });
     }
 
+
     exportTag(e){
 
       var authData = self.userAuth._tag.authData;
@@ -264,11 +335,92 @@
         });
       }
     };
+    downloadTag(e){
+      var exportDefintions = '';
+      var exportStyle = '';
+      var tagDefVal = self.tagEditor.getValue();
 
 
-    selectTag(e){
+      //Get the name as the name between opening and closing first tag.
+      var tagName = tagDefVal.substring(tagDefVal.indexOf('<')+1, tagDefVal.indexOf('>'));
+      //Create references
+      self.createReferences(tagName, tagDefVal);
+      console.log('tagrefs',self.currentTagReferences);
+
+      // //Loop over the references and append to a long long string.
+      // for (var x = 0; x<self.currentTagReferences.length;x++){
+      //   var opts = self.tagCollection[currentTagReferences[x]];
+
+      // }
+
+      //Loop over the keys in the tagrefs object, this is to avoid firebase issue with arrays.
+      for (var property in self.currentTagReferences) {
+        if (self.currentTagReferences.hasOwnProperty(property)) {
+          //Get the tag from the tags collection.
+          opts = self.tagCollection[property];
+
+          //Compile the tag.
+          exportDefintions += '\n\<script type="riot\/tag"\>' + opts.tagDef + '\<\/script\>';
+          exportStyle += '\n' + opts.tagStyle;
+
+        }
+      }
+
+      exportDefintions += '\<script type=\"riot/tag\"\>' + tagDefVal + '\<\/script\>';
+      exportStyle += '\n' + self.styleEditor.getValue();
+        // var exportObject = {
+        //   tagName: tagName,
+        //   tagDef: tagDefVal,
+        //   tagOpts: self.jsonEditor.getValue(),
+        //   tagStyle: self.styleEditor.getValue(),
+        //   tagRefs: self.currentTagReferences || {},
+        //   tagCategory: self.tagCategory
+        // };
+        var exportContainer = document.createElement('div');
+        var codeTag = document.createElement('code');
+        var preTag =  document.createElement('pre');
+        var stringTOExport = window.createExportHTMLFromTag(tagName, exportDefintions, exportStyle, self.jsonEditor.getValue());
+        console.log(stringTOExport);
+        preTag.innerText = stringTOExport;
+        codeTag.appendChild(preTag);
+        exportContainer.appendChild(codeTag);
+      var divText = exportContainer.outerHTML;
+      var myWindow = window.open('','','width=900,height=700');
+      var doc = myWindow.document;
+      doc.open();
+      doc.write(divText);
+      doc.close();
+
+
+
+    };
+
+    self.selectTag = function(e){
       console.log(e.target.value);
-      opts = self.tagCollection[e.target.value];
+          var tagDefVal = self.tagEditor.getValue();
+          //Get the name as the name between opening and closing first tag.
+          var tagName = tagDefVal.substring(tagDefVal.indexOf('<')+1, tagDefVal.indexOf('>'));
+
+      if (confirm('Click OK to save ' + tagName + ' in its current state.\n\nOr click cancel to discard the changes.')){
+
+          //Find and create a list of references for the tagItem.
+          self.createReferences(tagName, tagDefVal);
+
+        var exportObject = {
+          tagName: tagName,
+          tagDef: tagDefVal,
+          tagOpts: self.jsonEditor.getValue(),
+          tagStyle: self.styleEditor.getValue(),
+          tagRefs: self.currentTagReferences || {},
+          tagCategory: self.tagCategory
+        }
+
+        //Call and let the store handle the backend.
+        window.app.dispatcher.trigger('add-new-tag', exportObject);
+
+      }
+
+      var opts = self.tagCollection[e.target.value];
       opts = opts || {};
       //Editors dont get their values set if they are hidden.
       //Needs improvement, but until then, just show all the editors so their values get set.
@@ -278,11 +430,16 @@
 
       //Set the editors values from store.
       //self.tagCodeEditor._tag.trigger('set-content',  opts.tagDef ? opts.tagDef : '' );
+      // self.currentTagDefinition = opts.tagDef;
+      // self.currentTagCss = opts.tagStyle;
+      // self.currentTagOptions = opts.tagOpts;
+
       self.tagEditor.setValue(opts.tagDef ? opts.tagDef : '', -1);
       self.jsonEditor.setValue(opts.tagOpts ? opts.tagOpts : '', -1);
       self.styleEditor.setValue(opts.tagStyle ? opts.tagStyle : '', -1);
+
       self.currentTagReferences = opts.tagRefs;
-      self.tagCategories._tag.selector.value = opts.tagCategory;
+      self.tagCategories._tag.setSelected(opts.tagCategory);
       console.log('references');
       console.log(self.currentTagReferences);
       console.log(opts.tagRefs);
@@ -323,29 +480,44 @@
     });
 
 
+    self.setTagDefinitionValue = function(editor){
+      self.tagEditor = editor;
+      editor.setValue(opts.tagDef, -1);
+    };
 
+    self.setTagStyleValue = function(editor){
+      self.styleEditor = editor;
+      editor.setValue(opts.tagStyle, -1);
+    };
+    self.setTagOptionsValue = function(editor){
+      self.jsonEditor = editor;
+      editor.setValue(opts.tagOpts, -1);
+    };
 
     this.on('mount', function(){
-      self.tagEditor = ace.edit("tagDefContainer");
-      self.tagEditor.setTheme("ace/theme/monokai");
-      self.tagEditor.getSession().setMode("ace/mode/html");
-      self.tagEditor.setValue(opts.tagDef);
-      self.tagEditor.setOption("showPrintMargin", false);
-
-      self.jsonEditor = ace.edit("tagOptsContainer");
-      self.jsonEditor.setTheme("ace/theme/monokai");
-      self.jsonEditor.getSession().setMode("ace/mode/json");
-      self.jsonEditor.setOption("showPrintMargin", false);
-      self.jsonEditor.setValue(opts.tagOpts);
-
-      self.styleEditor = ace.edit("tagStyleContainer");
-      self.styleEditor.setTheme("ace/theme/monokai");
-      self.styleEditor.getSession().setMode("ace/mode/css");
-      self.styleEditor.setOption("showPrintMargin", false);
-      self.styleEditor.setValue(opts.tagStyle);
-
-      self.update();
 
     });
+    self.showHelp = function(){
+      var overlay = document.createElement('div');
+      var helpPage = document.createElement('help-page');
+      overlay.style.position = 'absolute';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.background = 'rgba(255,255,255,0.5)';
+      overlay.style.zIndex = '12';
+      overlay.appendChild(helpPage);
+      document.body.appendChild(overlay);
+      riot.mount('help-page');
+      var divText = overlay.outerHTML;
+      overlay.parentNode.removeChild(overlay);
+
+      var myWindow = window.open('','','width=900,height=700');
+      var doc = myWindow.document;
+      doc.open();
+      doc.write(divText);
+      doc.close();
+    }
     </script>
 </riot-tag-workbench>

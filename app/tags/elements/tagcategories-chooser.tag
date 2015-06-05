@@ -3,6 +3,7 @@
 	<script>
 		'use strict';
 		var self = this;
+
        //self.categories = opts.categories;
      	self.on('mount', function(){
     		//Register with dispatcher.
@@ -19,15 +20,22 @@
 
 		self.on('tagCategories-changed', function(categories){
 			self.categories = categories;
+			self.selected = self.selector.value || self.categories[0];
 		});
 		self.newValueSelected = function(){
 		    c.log(self.selector.value);
 			self.selected = self.selector.value;
 			self.trigger('change', self.selector.value);
+			if (opts.onselected){
+				opts.onselected(self.selector.value);
+			}
 
 		};
 		self.setSelected = function(selectedValue){
 			self.selector.value = selectedValue;
+			if (opts.onselected){
+				opts.onselected(self.selector.value);
+			}
 		}
 		self.getSelected = function(){
 			return self.selector.value;

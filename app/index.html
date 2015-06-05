@@ -17,6 +17,7 @@
     <!-- endbuild -->
     <link href='http://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900,900italic' rel='stylesheet' type='text/css'>
     <link href='http://fonts.googleapis.com/css?family=Roboto+Condensed:300italic,400italic,700italic,400,300,700' rel='stylesheet' type='text/css'>
+    <script data-main="scripts/main" src="scripts/require.js"></script>
     <script src="https://cdn.firebase.com/js/client/2.2.5/firebase.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/riot/2.1.0/riot+compiler.min.js"></script> -->
 </head>
@@ -31,8 +32,6 @@
     <!-- bower:js -->
     <script src="bower_components/css-element-queries/src/ElementQueries.js"></script>
     <script src="bower_components/css-element-queries/src/ResizeSensor.js"></script>
-    <script src="bower_components/riotjs/riot.js"></script>
-    <script src="bower_components/riotjs/compiler.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
@@ -56,30 +55,13 @@
 
 
 
-    <!-- build:js({app,.tmp}) scripts/main.js -->
-    <script src="scripts/ace-src-min/ace.js"></script>
-    <script src="scripts/ace-src-min/mode-css.js"></script>
-    <script src="scripts/ace-src-min/mode-html.js"></script>
-    <script src="scripts/ace-src-min/mode-json.js"></script>
-    <script src="scripts/ace-src-min/worker-css.js"></script>
-    <script src="scripts/ace-src-min/worker-html.js"></script>
-    <script src="scripts/ace-src-min/worker-json.js"></script>
-    <script src="scripts/ace-src-min/theme-monokai.js"></script>
-    <script src="scripts/index.js"></script>
-    <script src="scripts/tags/elements.js"></script>
-    <script src="scripts/tags/pages.js"></script>
-    <!-- endbuild -->
 
 
 
 <script>
 /* global riot */
 /* exported c */
-  var predefined = {
-    tagDef: '<riot-tag>\n <h3>New tag</h3>\n <script>\n \n <\/script> \n</riot-tag>',
-    tagOpts: '{"message":"New Message"}',
-    tagStyle: 'riot-tag{\n background-color:#fff;\n}'
-  };
+
   //Replace console.log
   var c = (function() {
     'use strict';
@@ -93,7 +75,7 @@
           }
       });
   })();
-      riot.mount('*', predefined);
+
     </script>
 </body>
 

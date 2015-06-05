@@ -101,6 +101,8 @@ margin:0.5rem;
   height:1024px;
   margin:0.5rem;
   background:white;
+   overflow-y:scroll;
+ overflow-x:hidden;
 }
 #ipad::-webkit-scrollbar {
     display: none;
@@ -199,4 +201,45 @@ select{
   margin-top:-2rem;
   position:relative;
   top:-0.25rem;
+}
+
+insignia-tag-description{
+
+    font-family:Roboto;
+    display:block;
+    margin:0.75rem;
+    background:white;
+    border:1px solid silver;
+}
+insignia-tag-description h2 {
+    background:#7986CB;
+    widtH:100%;
+   margin:0;
+   padding:0.5rem 0.75rem;
+   padding-left:1.5rem;
+   border-bottom:1px solid #767676;
+}
+insignia-tag-description h2 > span {
+    font-weight:300;
+}
+insignia-tag-description h3{
+   margin:0.5rem 0.25rem 0rem 0.25rem;
+   padding:0.5rem 0.75rem 0rem 0.75rem;
+   border-bottom:1px solid #dedede;
+}
+insignia-tag-description p{
+    font-family: 'Halant', serif;
+    padding:0.125rem 0.25rem 0.125rem 0.75rem;
+}
+insignia-tag-description pre{
+    white-space:pre-wrap;
+    padding:0.75rem;
+}
+insignia-tag-description code{
+    box-sizing:border-box;
+    background:#ededed;
+    margin:0.25rem 0.75rem;
+    display:inline-block;
+    width:calc(100% - 1.5rem); /* 2 times the margin */
+    overflow:scroll;
 }
